@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alex Chen — Game Dev &amp; Web Programmer · 3D Room</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3' y='5' width='10' height='7' rx='1' fill='%23a06bff'/%3E%3Crect x='6' y='12' width='4' height='2' fill='%234fe3b0'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2b2b33; --ink-soft:#5c5c68; --paper:#f2f1ee; --panel:rgba(255,255,255,.86);
+    --purple:#a06bff; --mint:#4fe3b0; --pink:#ff8fb8; --line:rgba(43,43,51,.12);
+  }
+  html,body{margin:0;height:100%;overflow:hidden;background:#d8d8de;
+    font-family:"Space Grotesk",system-ui,sans-serif;color:var(--ink)}
+  canvas{display:block}
+  #fallback{position:fixed;inset:0;display:none;place-items:center;text-align:center;
+    background:radial-gradient(120% 120% at 30% 20%,#efeaf9 0%,#d8d8de 55%,#c9cdd6 100%)}
+  #fallback .box{max-width:420px;padding:32px}
+  #fallback h1{font-size:22px;margin:0 0 8px}
+  #fallback p{color:var(--ink-soft);line-height:1.6;margin:0}
+
+  #ui{position:fixed;inset:0;pointer-events:none;z-index:5}
+  #ui *{pointer-events:auto}
+
+  header{position:absolute;top:22px;left:26px;max-width:360px}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.28em;
+    text-transform:uppercase;color:var(--ink-soft);margin:0 0 8px}
+  h1{margin:0;font-size:clamp(26px,3.4vw,40px);line-height:1.04;font-weight:700;letter-spacing:-.01em}
+  h1 .amp{color:var(--purple)}
+  .role{margin:10px 0 14px;font-size:14px;color:var(--ink-soft)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-family:"JetBrains Mono",monospace;font-size:11px;padding:4px 10px;border-radius:999px;
+    border:1px solid var(--line);background:rgba(255,255,255,.6);backdrop-filter:blur(4px)}
+  .chip b{color:var(--purple);font-weight:600}
+  .chip.mint b{color:#0e9f73}
+
+  #views{position:absolute;right:22px;bottom:22px;display:flex;gap:6px;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px;backdrop-filter:blur(8px)}
+  #views button{font:inherit;font-size:12px;font-weight:500;color:var(--ink-soft);
+    border:0;background:transparent;padding:8px 12px;border-radius:9px;cursor:pointer;transition:background .15s,color .15s}
+  #views button:hover{background:rgba(43,43,51,.06);color:var(--ink)}
+  #views button:focus-visible{outline:2px solid var(--purple);outline-offset:1px}
+  #views button[aria-pressed="true"]{background:var(--ink);color:#fff}
+
+  #spots{position:absolute;left:22px;bottom:22px;display:flex;flex-direction:column;gap:6px}
+  #spots button{display:flex;align-items:center;gap:8px;font:inherit;font-size:12px;font-weight:500;
+    color:var(--ink);text-align:left;border:1px solid var(--line);background:var(--panel);
+    padding:8px 12px;border-radius:11px;cursor:pointer;backdrop-filter:blur(8px);
+    transition:transform .15s,border-color .15s}
+  #spots button:hover{transform:translateX(3px);border-color:var(--purple)}
+  #spots button:focus-visible{outline:2px solid var(--purple);outline-offset:1px}
+  #spots button[aria-pressed="true"]{border-color:var(--purple);box-shadow:0 0 0 1px var(--purple)}
+  #spots .dot{width:8px;height:8px;border-radius:50%;background:var(--purple);flex:none}
+  #spots button:nth-child(2) .dot{background:var(--mint)}
+  #spots button:nth-child(3) .dot{background:var(--pink)}
+  #spots button:nth-child(4) .dot{background:#6ea8ff}
+  #spots button:nth-child(5) .dot{background:#f5b942}
+
+  #tip{position:absolute;transform:translate(-50%,-140%);font-family:"JetBrains Mono",monospace;
+    font-size:11px;padding:5px 10px;border-radius:8px;background:var(--ink);color:#fff;
+    opacity:0;transition:opacity .12s;white-space:nowrap;pointer-events:none}
+  #tip.on{opacity:1}
+
+  #panel{position:absolute;top:50%;right:22px;transform:translateY(-50%) translateX(16px);width:300px;
+    background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;
+    backdrop-filter:blur(12px);opacity:0;visibility:hidden;
+    transition:opacity .2s ease,transform .2s ease}
+  #panel.open{opacity:1;visibility:visible;transform:translateY(-50%) translateX(0)}
+  #panel h2{margin:0 0 2px;font-size:18px}
+  #panel .tag{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--purple);margin:0 0 10px}
+  #panel p{font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0 0 12px}
+  #panel .stack{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px}
+  #panel .stack span{font-family:"JetBrains Mono",monospace;font-size:10px;padding:3px 8px;
+    border-radius:6px;background:rgba(43,43,51,.07)}
+  #panel a{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink);
+    text-decoration:none;border-bottom:2px solid var(--mint);padding-bottom:1px}
+  #panel a:hover{color:var(--purple);border-color:var(--purple)}
+  #panel a:focus-visible{outline:2px solid var(--purple);outline-offset:2px}
+  #panelClose{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;
+    border:1px solid var(--line);background:transparent;font-size:15px;line-height:1;color:var(--ink-soft);
+    cursor:pointer;transition:background .15s,color .15s}
+  #panelClose:hover{background:rgba(43,43,51,.07);color:var(--ink)}
+  #panelClose:focus-visible{outline:2px solid var(--purple);outline-offset:1px}
+
+  #hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);
+    font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--ink-soft);opacity:.7;pointer-events:none}
+
+  #links{position:absolute;top:24px;right:26px;display:flex;gap:14px}
+  #links a{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.12em;color:var(--ink-soft);
+    text-decoration:none;text-transform:uppercase;transition:color .15s}
+  #links a:hover{color:var(--purple)}
+  #links a:focus-visible{outline:2px solid var(--purple);outline-offset:2px}
+
+  @media (max-width:760px){
+    header{left:16px;top:16px;right:16px}
+    .chips{display:none}
+    #links{display:none}
+    #spots{left:12px;bottom:76px}
+    #views{right:12px;bottom:12px;left:12px;justify-content:center}
+    #views button{padding:8px 8px;font-size:11px}
+    #panel{right:12px;left:12px;width:auto;top:auto;bottom:130px;transform:translateY(8px)}
+    #panel.open{transform:translateY(0)}
+    #hint{display:none}
+  }
+</style>
+</head>
+<body>
+<div id="fallback"><div class="box">
+  <h1>Alex Chen — Game Dev &amp; Web Programmer</h1>
+  <p>This portfolio is an interactive 3D room that needs WebGL. Please open it in a browser with WebGL enabled.</p>
+</div></div>
+
+<div id="ui">
+  <header>
+    <p class="eyebrow">Portfolio · v3.0</p>
+    <h1>Alex Chen<br><span class="amp">&amp;</span> the pixel room</h1>
+    <p class="role">Game developer &amp; web programmer crafting playful worlds in the browser.</p>
+    <div class="chips">
+      <span class="chip"><b>Three.js</b> WebGL</span>
+      <span class="chip mint"><b>GLSL</b> shaders</span>
+      <span class="chip"><b>Unity</b> C#</span>
+      <span class="chip mint"><b>React</b> TS</span>
+      <span class="chip"><b>Rust</b> WASM</span>
+    </div>
+  </header>
+
+  <nav id="links" aria-label="External links">
+    <a href="https://github.com/alexchen-dev" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://alexchen.itch.io" target="_blank" rel="noopener">itch.io</a>
+    <a href="mailto:hello@alexchen.dev">Email</a>
+  </nav>
+
+  <div id="spots" role="group" aria-label="Room hotspots"></div>
+
+  <div id="views" role="group" aria-label="Camera views">
+    <button data-view="iso" aria-pressed="true">Iso</button>
+    <button data-view="desk" aria-pressed="false">Desk</button>
+    <button data-view="arcade" aria-pressed="false">Arcade</button>
+    <button data-view="bed" aria-pressed="false">Cozy</button>
+  </div>
+
+  <div id="tip" role="status"></div>
+
+  <aside id="panel" aria-live="polite">
+    <button id="panelClose" aria-label="Close panel">×</button>
+    <p class="tag" id="panelTag"></p>
+    <h2 id="panelTitle"></h2>
+    <p id="panelBody"></p>
+    <div class="stack" id="panelStack"></div>
+    <a id="panelLink" href="#" target="_blank" rel="noopener">Open project ↗</a>
+  </aside>
+
+  <p id="hint">drag to orbit · scroll to zoom · click the glowing spots</p>
+</div>
+
+<script type="module" src="./src/scene.js"></script>
+</body>
+</html>
